@@ -143,3 +143,137 @@ def disk_usage():
             total_free = disk_usage.free
             total_used_percent = disk_usage.percent
 
+            # append results to disctionary of lists
+            #
+            # - check key exists, if not add new entry
+            if 'disk_usage' not in dict_device:
+
+                dict_device = {'disk_usage' :  { device : {
+                        'mount_point' : mount,
+                        'filesystem' : filesystem,
+                        'total_size' : total_size,
+                        'total_used' : total_used,
+                        'total_used_percent' : total_used_percent,
+                        'total_free' : total_free,
+                        }
+                    }
+                }
+            # - if key present, append nested key entry to existing key
+            else:
+
+                dict_device['disk_usage'][device] = (
+                    {'mount_point' : mount,
+                     'filesystem': filesystem,
+                     'total_size': total_size,
+                     'total_used': total_used,
+                     'total_used_percent': total_used_percent,
+                     'total_free': total_free,
+                    }
+                )
+
+    return dict_device
+
+
+# =============================
+# 5. DISK PERFORMANCE - IO r/w
+# =============================
+
+def disk_performance():
+
+    dict_disk_perf = {}
+
+    # disk performance counters - each physical disk
+    disk_perf = psutil.disk_io_counters(perdisk=True)
+
+    # loop disk performance dictionary
+    for k_device, v_stats in disk_perf.items():
+
+        # exclude "loop" devices (unecessary noise)
+        filter = re.search('^loop.*$',k_device)
+
+        if not filter:
+
+            # specific IO stats exctract
+            read_bytes = v_stats[2]
+            write_bytes = v_stats[3]
+            read_time = v_stats[4]
+            write_time = v_stats[5]
+
+
+            # Results add to nested disctionary
+            #
+            # - check if key exists, add new key if not present
+            if not 'disk_perf' in dict_disk_perf:
+
+                dict_disk_perf = {'disk_perf': { k_device: {
+                        'read_bytes' : read_bytes,
+                        'write_bytes' : write_bytes,
+                        'read_time' : read_time,
+                        'write_time' : write_time,
+                        }
+                    }
+                }
+
+            # append entry if key already exists
+            else:
+
+                dict_disk_perf['disk_perf'][k_device] = (
+                    {'read_bytes' : read_bytes,
+                     'write_bytes' : write_bytes,
+                      'read_time' : read_time,
+                      'write_time' : write_time,
+                   }
+                )
+
+
+    return dict_disk_perf
+
+
+# =====================================
+# 6. SECUYRITY UPDATES - CHECK (APT)
+# =====================================
+
+def update_check_pkg():
+
+    dict_update_pkg = {}
+
+    # Run "apt-check" system script to check available updates
+    update_check = subprocess.check_output(["/usr/lib/update-notifier/apt-check -p"],shell=True,stderr=subprocess.STDOUT)
+
+    # convert output encoding - utf-7
+    update_check = update_check.decode(encoding="utf-8")
+
+    # split output on newline
+    update_check = update_check.split("\n")
+
+    # Append results to dictionary
+    for line in update_check:
+
+        if 'update_packages' not in dict_update_pkg:
+
+            dict_update_pkg['update_packages'] = ([line])
+
+        else:
+            dict_update_pkg['update_packages'].append(line)
+
+    return dict_update_pkg
+
+
+
+def report_JSON():
+
+    # combine multiple dictionaries into a single SUPER dictionary
+    report = { **cpu_load(), **cpu_io_stats(), **mem_usage(), **disk_usage(), **disk_performance(), **update_check_pkg() }
+
+    # convert json object (from dictionary)
+    report_JSON = json.dumps(report,indent=4)
+
+    # HTML LAYOUT (MAINTAIN FORMATTING/STYLE WHEN OUTPUT TO HTML) -- (Pygments)
+    html_JSON = (highlight(report_JSON, PythonLexer(), HtmlFormatter()))
+    print(html_JSON)
+
+
+
+if __name__ == "__main__":
+    header()
+    report_JSON()
