@@ -70,3 +70,76 @@ def cpu_load():
     return(dict_load_avg)
 
 
+
+# =======================
+# 2. CPU - IO WAIT TIME
+# =======================
+
+def cpu_io_stats():
+
+    dict_io_stats = {}
+
+    # cpustats - tuple element 5
+    iowait = psutil.cpu_times().iowait
+
+    # NEsted dictionary - add result
+    dict_io_stats['cpu_iowait'] = iowait
+
+    return dict_io_stats
+
+
+# ============================
+# 3. MEMORY USAGE - OUTPUT MB
+# ============================
+
+
+def mem_usage():
+
+    # memory stats - extract
+    #              - convert to MB (float x2 decimal places)
+    mem = psutil.virtual_memory()
+
+    dict_mem = {'mem_usage': {
+        'mem_total' : "{0:.2f}".format(mem.total / 1024/ 1024),
+        'mem_used_rss': "{0:.2f}".format(mem.used / 1024 / 1024),
+        'mem_cached' : ("{0:.2f}".format(mem.cached / 1024/ 1024)),
+        'mem_available' : ("{0:.2f}".format(mem.available / 1024/ 1024)),
+        'mem_free' : ("{0:.2f}".format(mem.free / 1024/ 1024)),
+        }
+    }
+
+    return dict_mem
+
+
+# ===========================
+# 4. DISK USAGE / READ/WRITE
+# ===========================
+
+def disk_usage():
+    dict_device = {}
+
+    # physical disk partition data extract - (ie. path/device/mountpoint)
+    partition = psutil.disk_partitions(False)
+
+    # loop partition data
+    for disk in partition:
+
+        # assign specific partition data to vars
+        device = disk.device
+        mount = disk.mountpoint
+        filesystem = disk.fstype
+
+        # exclude "SQUASH" devices (unecessary noise)
+        filter = re.search('^squashfs',filesystem)
+
+        if not filter:
+
+            # disk usage stats object create - use "device path" extracted above for each disk
+            disk_usage = psutil.disk_usage(device)
+
+            # specific disk usage stats - assign to vars
+            total_size = disk_usage.total
+            total_used = disk_usage.used
+            total_free = disk_usage.free
+            total_used_percent = disk_usage.percent
+
